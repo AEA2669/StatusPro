@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Screen (Viewer)</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            transition: background-color 0.4s ease;
+        }
+        #display-box {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { margin: 0; font-size: 40px; color: #333; }
+        p { color: #666; margin-top: 10px; }
+        #connection-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            font-family: monospace;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="connection-status">🟡 Connecting...</div>
+
+    <div id="display-box">
+        <h1 id="main-text">Waiting...</h1>
+        <p id="sub-text">Listening for commands</p>
+    </div>
+
+    <script>
+        // Connect to the exact same public broker
+        const brokerUrl = 'wss://broker.hivemq.com:8000/mqtt';
+        const client = mqtt.connect(brokerUrl);
+        
+        // Must match the Sender's channel exactly
+        const topicName = 'alexov-tx-control-1999';
+        
+        const connStatus = document.getElementById('connection-status');
+        const mainText = document.getElementById('main-text');
+        const subText = document.getElementById('sub-text');
+
+        // When connected, subscribe to the channel
+        client.on('connect', () => {
+            connStatus.innerText = "🟢 Online";
+            client.subscribe(topicName, (err) => {
+                if (!err) {
+                    console.log(`Subscribed to ${topicName}`);
+                }
+            });
+        });
+
+        // When a message is received over the channel
+        client.on('message', (topic, message) => {
+            // Convert the raw message bytes into a string
+            const receivedCommand = message.toString();
+            console.log(`Received: ${receivedCommand}`);
+
+            // React to the specific codes
+            if (receivedCommand === 'RED') {
+                document.body.style.backgroundColor = "#ffcccc";
+                mainText.innerText = "🚨 ALARM ACTIVE";
+                mainText.style.color = "#cc0000";
+                subText.innerText = "Code RED was triggered!";
+            } 
+            else if (receivedCommand === 'BLUE') {
+                document.body.style.backgroundColor = "#cce5ff";
+                mainText.innerText = "🌊 ALL CLEAR";
+                mainText.style.color = "#005ce6";
+                subText.innerText = "Code BLUE was triggered.";
+            } 
+            else if (receivedCommand === 'RESET') {
+                document.body.style.backgroundColor = "#f4f4f9";
+                mainText.innerText = "Waiting...";
+                mainText.style.color = "#333";
+                subText.innerText = "Listening for commands";
+            }
+        });
+    </script>
+</body>
+</html>
